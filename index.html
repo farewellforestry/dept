@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forestry Farewell Invitation</title>
+    <style>
+        /* Cinematic dark background */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #050505;
+            overflow: hidden;
+            font-family: 'Georgia', serif; 
+        }
+
+        /* The main stage */
+        .invitation-container {
+            position: relative;
+            width: 95vw; 
+            height: 95vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- THE EMOTIONAL INTRO MESSAGE --- */
+        .intro-message {
+            position: absolute;
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+            color: #fdf5e6; 
+            font-size: 1.1rem;
+            line-height: 1.8;
+            opacity: 0; 
+            z-index: 5;
+            transition: opacity 2s ease-in-out; 
+            pointer-events: none;
+        }
+
+        .intro-message h2 {
+            font-size: 1.5rem;
+            color: #d4af37; 
+            margin-bottom: 20px;
+            font-weight: normal;
+            letter-spacing: 2px;
+        }
+
+        /* The solid image underneath that hides the mobile black line gaps perfectly */
+        .base-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            z-index: 1;
+        }
+
+        /* The Final Centered Invitation */
+        .final-invite {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; 
+            opacity: 0; 
+            z-index: 1;
+            transition: opacity 4s ease-in-out; 
+        }
+
+        /* The layer that breaks into dust */
+        .shatter-layer {
+            position: absolute;
+            display: flex;
+            flex-wrap: wrap;
+            z-index: 2;
+        }
+
+        /* The individual dust particles */
+        .particle {
+            background-repeat: no-repeat;
+            transition: transform 3.5s cubic-bezier(0.33, 1, 0.68, 1), opacity 3s ease-out;
+            will-change: transform, opacity;
+        }
+
+        /* The cover and ribbon */
+        .cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .cover.open {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .ribbon-image {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+            cursor: pointer;
+            transition: transform 0.4s ease;
+        }
+
+        .ribbon-image:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="invitation-container" id="invitationContainer">
+        
+        <div class="intro-message" id="introMessage">
+            <h2>Final years, the time has come.</h2>
+            <p>The ribbon has been cut, and as this celebration eventually winds down, the path is clear for everyone to go their separate ways.</p>
+            <p>But honestly? Looking at these faces, there is a visible desire to linger just a moment longer in the shadow of everything achieved together here...</p>
+        </div>
+
+        <img src="" class="base-image" id="baseImage">
+
+        <img src="forestry.jpg" alt="Final Invite" class="final-invite" id="finalInvite">
+
+        <div class="shatter-layer" id="shatterLayer"></div>
+
+        <div class="cover" id="cover">
+            <img src="ribbon.jpg" alt="Click to cut the ribbon" class="ribbon-image" id="ribbonButton">
+        </div>
+
+    </div>
+
+    <audio id="openSound" src="01 Dude Orchestral Suite.mp3"></audio>
+
+    <script>
+        const ribbonButton = document.getElementById('ribbonButton');
+        const cover = document.getElementById('cover');
+        const openSound = document.getElementById('openSound');
+        const introMessage = document.getElementById('introMessage');
+        const shatterLayer = document.getElementById('shatterLayer');
+        const container = document.getElementById('invitationContainer');
+        const finalInvite = document.getElementById('finalInvite');
+        const baseImage = document.getElementById('baseImage');
+
+        // All 6 exactly as .jpeg
+        const photoSequence = [
+            '1.jpeg', '2.jpeg', '3.jpeg', '4.jpeg', '5.jpeg', '6.jpeg', 
+            'forestry.jpg'
+        ];
+
+        let currentIndex = 0;
+        let particles = [];
+
+        // 20x20 = 400 particles. Math works perfectly.
+        const GRID_SIZE = 20; 
+        const totalParticles = GRID_SIZE * GRID_SIZE;
+
+        // Preload images silently
+        photoSequence.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+
+        function loadAndPlayImage(imgSrc) {
+            
+            // Reached the final poster
+            if (currentIndex === photoSequence.length - 1) {
+                shatterLayer.style.display = 'none'; 
+                baseImage.style.display = 'none';
+                finalInvite.style.opacity = '1'; 
+                return;
+            }
+
+            const img = new Image();
+            img.src = imgSrc;
+            
+            // SAFETY NET: Skip missing images
+            img.onerror = () => {
+                console.log("Could not find image: " + imgSrc + ". Skipping to next.");
+                currentIndex++;
+                if(currentIndex < photoSequence.length) {
+                    loadAndPlayImage(photoSequence[currentIndex]);
+                }
+            };
+            
+            img.onload = () => {
+                const containerW = container.clientWidth;
+                const containerH = container.clientHeight;
+                const imgAspect = img.naturalWidth / img.naturalHeight;
+                const containerAspect = containerW / containerH;
+
+                let finalW, finalH;
+                if (imgAspect > containerAspect) {
+                    finalW = containerW;
+                    finalH = containerW / imgAspect;
+                } else {
+                    finalH = containerH;
+                    finalW = containerH * imgAspect;
+                }
+
+                // Size the shatter layer and show the solid base image underneath
+                shatterLayer.style.width = `${finalW}px`;
+                shatterLayer.style.height = `${finalH}px`;
+                baseImage.src = imgSrc;
+                baseImage.style.opacity = '1';
+                
+                shatterLayer.innerHTML = ''; 
+                particles = [];
+                
+                for (let i = 0; i < totalParticles; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+                    
+                    // PURE MATH: Exactly 5% (100 / 20). No overflow, no broken grid!
+                    particle.style.width = `${100 / GRID_SIZE}%`;
+                    particle.style.height = `${100 / GRID_SIZE}%`;
+                    
+                    particle.style.backgroundImage = `url('${imgSrc}')`;
+                    particle.style.backgroundSize = `${GRID_SIZE * 100}% ${GRID_SIZE * 100}%`;
+                    
+                    const col = i % GRID_SIZE; 
+                    const row = Math.floor(i / GRID_SIZE);
+                    
+                    particle.style.backgroundPosition = `${(col / (GRID_SIZE - 1)) * 100}% ${(row / (GRID_SIZE - 1)) * 100}%`;
+
+                    const randomDelay = Math.random() * 0.5; 
+                    particle.style.transitionDelay = `${randomDelay}s`;
+
+                    shatterLayer.appendChild(particle);
+                    particles.push(particle);
+                }
+
+                // Hold image still for 2.5 seconds
+                setTimeout(() => {
+                    
+                    // Instantly hide the solid base image to reveal the empty background beneath the dust
+                    baseImage.style.opacity = '0';
+
+                    // Animate the dust
+                    particles.forEach(particle => {
+                        const driftX = (Math.random() - 0.5) * 300; 
+                        const driftY = (Math.random() - 0.8) * 400; 
+                        const softSpin = (Math.random() - 0.5) * 60; 
+                        
+                        particle.style.transform = `translate(${driftX}px, ${driftY}px) rotate(${softSpin}deg) scale(0.3)`;
+                        particle.style.opacity = '0';
+                    });
+
+                    // Wait 3.5 seconds for the dust to clear, load next
+                    setTimeout(() => {
+                        currentIndex++;
+                        loadAndPlayImage(photoSequence[currentIndex]);
+                    }, 3500); 
+
+                }, 2500); 
+            };
+        }
+
+        // --- THE SEQUENCE OF EVENTS ---
+        ribbonButton.addEventListener('click', function() {
+            openSound.play();
+            cover.classList.add('open');
+            
+            setTimeout(() => {
+                introMessage.style.opacity = '1';
+                cover.style.display = 'none'; 
+                
+                setTimeout(() => {
+                    introMessage.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        loadAndPlayImage(photoSequence[currentIndex]);
+                    }, 2000);
+
+                }, 7000); 
+
+            }, 1000); 
+        });
+    </script>
+
+</body>
+</html>
